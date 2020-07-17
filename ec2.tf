@@ -1,6 +1,6 @@
 provider "aws" {
   region = "ap-south-1"
-  profile= "avanishgupta"
+  profile= "avanish007"
 }
 #creating key
 resource "tls_private_key" "example" {
@@ -131,12 +131,23 @@ provisioner "remote-exec" {
 
 #creating s3 bucket
 resource "aws_s3_bucket" "b" {
- 
+  
   acl    = "private"
-   //force_detach=true
-  tags = {
-    Name        = "My bucket"
+  
+  website {
+    index_document = "justice.jpg"
+    error_document = "error.html"
 
+    routing_rules = <<EOF
+[{
+    "Condition": {
+        "KeyPrefixEquals": "docs/"
+    },
+    "Redirect": {
+        "ReplaceKeyPrefixWith": "documents/"
+    }
+}]
+EOF
   }
 }
 
@@ -192,13 +203,18 @@ locals {
 
 # creating cloudfront distribution
 resource "aws_cloudfront_distribution" "s3_distribution" {
+  
   origin {
-    domain_name = "${aws_s3_bucket.b.bucket_regional_domain_name}"
+    domain_name = aws_s3_bucket.b.website_endpoint
     origin_id   = "${local.s3_origin_id}"
+custom_origin_config {
+    origin_protocol_policy = "http-only"
+    http_port              = 80
+    https_port             = 443
+    origin_ssl_protocols   = ["TLSv1.2", "TLSv1.1", "TLSv1"]
+  }
 
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.origin_access_identity.cloudfront_access_identity_path
-    }
+   
   }
 
   enabled             = true
@@ -208,7 +224,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 
   logging_config {
     include_cookies = false
-    bucket          = "avanish2301.s3.amazonaws.com"
+    bucket          = "avanish2302.s3.amazonaws.com"
     prefix          = "myprefix"
   }
 
@@ -302,7 +318,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
 provisioner "remote-exec" {
 inline=[
       "sudo su << EOF",
-      "echo \"<img src='http://${aws_cloudfront_distribution.s3_distribution.domain_name}/${aws_s3_bucket_object.object.key}'>\" > /var/www/html/justice_league.html",
+      "echo \"<img src='http://${aws_cloudfront_distribution.s3_distribution.domain_name}'>\" > /var/www/html/justice_league.html",
       "EOF"
   ]
      }
@@ -318,5 +334,15 @@ depends_on = [
 	    command = "cd C:/Program Files (x86)/Google/Chrome/Application && chrome  ${aws_instance.LinuxOS.public_ip}/justice_league.html"
   	}
 }
+
+
+
+
+
+
+
+
+
+
 
 
